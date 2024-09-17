@@ -1,0 +1,10 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+# optional! - this can be omitted to just be inferred instead
+[tasks]
+print = { path = "tasks/print.rs" }
