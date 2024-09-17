@@ -1,7 +1,7 @@
 # Plan of Action
 
-- [ ] sketch out a repository layout or whatever workflow example
-- [ ] create a new `cargo` subcommand
+- [x] sketch out a repository layout or whatever workflow example
+- [x] create a new `cargo` subcommand
 - [ ] hook up wasmtime to the subcommand
 - [ ] add support for manual paths in a `[tasks]` section in `Cargo.toml`
 - [ ] figure out how to configure capabilities for the tasks
