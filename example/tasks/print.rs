@@ -1,3 +1,3 @@
 fn main() {
-    println!("printed a message!");
+    println!("printed a message from inside a Wasm sandbox!");
 }
