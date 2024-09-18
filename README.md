@@ -1,20 +1,22 @@
-<h1 align="center">watr</h1>
+<h1 align="center">cargo-task-wasm</h1>
 <div align="center">
-  <strong>Wa</strong>sm <strong>T</strong>ask <strong>R</strong>unner for Cargo
+  <strong>
+    A secure `cargo task` subcommand for Rust
+  </strong>
 </div>
 
 <!-- <br />
 
 <div align="center">
-  <a href="https://crates.io/crates/cargo-task">
-    <img src="https://img.shields.io/crates/v/cargo-task.svg?style=flat-square"
+  <a href="https://crates.io/crates/cargo-task-wasm">
+    <img src="https://img.shields.io/crates/v/cargo-task-wasm.svg?style=flat-square"
     alt="Crates.io version" />
   </a>
-  <a href="https://crates.io/crates/cargo-task">
-    <img src="https://img.shields.io/crates/d/cargo-task.svg?style=flat-square"
+  <a href="https://crates.io/crates/cargo-task-wasm">
+    <img src="https://img.shields.io/crates/d/cargo-task-wasm.svg?style=flat-square"
       alt="Download" />
   </a>
-  <a href="https://docs.rs/cargo-task">
+  <a href="https://docs.rs/cargo-task-wasm">
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
@@ -22,15 +24,15 @@
 
 <div align="center">
   <h3>
-    <a href="https://docs.rs/cargo-task">
+    <a href="https://docs.rs/cargo-task-wasm">
       API Docs
     </a>
     <span> | </span>
-    <a href="https://github.com/yoshuawuyts/cargo-task/releases">
+    <a href="https://github.com/yoshuawuyts/cargo-task-wasm/releases">
       Releases
     </a>
     <span> | </span>
-    <a href="https://github.com/yoshuawuyts/cargo-task/blob/master.github/CONTRIBUTING.md">
+    <a href="https://github.com/yoshuawuyts/cargo-task-wasm/blob/master.github/CONTRIBUTING.md">
       Contributing
     </a>
   </h3>
@@ -38,7 +40,7 @@
 
 ## About
 
-`watr` provides a new `cargo task` subcommand that can be used to run
+This project provides a new `cargo task` subcommand that can be used to run
 project-local tasks inside a secure WebAssembly sandbox. It looks for files in a
 `tasks/` subdirectory of your project's root, and compiles those to [Wasm
 Components](https://component-model.bytecodealliance.org). This is an attempt at
@@ -53,7 +55,7 @@ to be present on the host system.
 
 ```sh
 $ rustup +beta target add wasip2  # Install the WASI 0.2 target
-$ cargo install watr              # Install the `cargo task` subcommand
+$ cargo install cargo-task-wasm   # Install the `cargo task` subcommand
 ```
 
 ## Usage
@@ -72,6 +74,8 @@ Options:
 
 ## Configuration
 
+### Permissions
+
 Tasks in `cargo task` follow the [principle of least
 privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege). By
 default they only get access to the working directory, and can access any
@@ -88,9 +92,29 @@ edition = "2021"
 wstd = "0.4.0"
 
 [tasks]
-print = { path = "tasks/print.rs" }                 # define a custom path for the task
 env = { permissions = { inherit-env = ["FOO"] } }   # inherit specific env vars
 ```
+
+### Paths
+
+By default the `cargo task` subcommand will look for commands in the `tasks/`
+directory of the workspace. However, it is also able to find tasks located in
+other locations by specifying custom paths.
+
+```toml
+[tasks]
+print = { path = "tasks/print.rs" }   # define a custom path for the task
+```
+
+## Roadmap
+
+- [x] Sketch out a repository layout or whatever workflow example
+- [x] Create a new `cargo` subcommand
+- [x] Hook up wasmtime to the subcommand
+- [x] Add support for manual paths in a `[tasks]` section in `Cargo.toml`
+- [x] Figure out how to configure capabilities for the tasks
+- [ ] Add support for compiling cargo deps as part of subcommands
+- [ ] Add support for installing tasks from crates.io
 
 ## See Also
 
@@ -108,9 +132,9 @@ look at some of these issues:
 - [Issues labeled "good first issue"][good-first-issue]
 - [Issues labeled "help wanted"][help-wanted]
 
-[contributing]: https://github.com/yoshuawuyts/cargo-task/blob/master.github/CONTRIBUTING.md
-[good-first-issue]: https://github.com/yoshuawuyts/cargo-task/labels/good%20first%20issue
-[help-wanted]: https://github.com/yoshuawuyts/cargo-task/labels/help%20wanted
+[contributing]: https://github.com/yoshuawuyts/cargo-task-wasm/blob/master.github/CONTRIBUTING.md
+[good-first-issue]: https://github.com/yoshuawuyts/cargo-task-wasm/labels/good%20first%20issue
+[help-wanted]: https://github.com/yoshuawuyts/cargo-task-wasm/labels/help%20wanted
 
 ## License
 

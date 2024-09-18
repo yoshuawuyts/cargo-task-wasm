@@ -1,9 +1,9 @@
 [package]
-name = "cargo-task"
+name = "cargo-task-wasm"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yoshuawuyts/cargo-task"
-documentation = "https://docs.rs/cargo-task"
+repository = "https://github.com/yoshuawuyts/cargo-task-wasm"
+documentation = "https://docs.rs/cargo-task-wasm"
 description = "A task runner for Cargo"
 readme = "README.md"
 edition = "2018"

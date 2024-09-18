@@ -68,7 +68,7 @@ async fn main() -> Result<(), Error> {
     let args = Args::parse();
     assert_eq!(
         args.argv0, "task",
-        "cargo-task should be invoked as a `cargo` subcommand"
+        "cargo-task-wasm should be invoked as a `cargo` subcommand"
     );
 
     // Find task in tasks directory
