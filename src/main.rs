@@ -1,9 +1,13 @@
 //! A task runner for Cargo
 #![forbid(unsafe_code)]
 
-use clap::Parser;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
+
+use clap::Parser;
+use wasmtime::{component::Component, Result, *};
+use wasmtime_wasi::bindings::Command;
+use wasmtime_wasi::{ResourceTable, WasiView};
 
 /// A sandboxed task runner for cargo
 #[derive(clap::Parser, Debug)]
@@ -18,39 +22,94 @@ struct Args {
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-fn main() -> Result<(), Error> {
-    // 1. Parse command line arguments
+/// The shared context for our component instantiation.
+///
+/// Each store owns one of these structs. In the linker this maps: names in the
+/// component -> functions on the host side.
+struct Ctx {
+    // Anything that WASI can access is mediated though this. This contains
+    // capabilities, preopens, etc.
+    wasi: wasmtime_wasi::WasiCtx,
+    // NOTE: this might go away eventually
+    // We need something which owns the host representation of the resources; we
+    // store them in here. Think of it as a `HashMap<i32, Box<dyn Any>>`
+    table: wasmtime::component::ResourceTable,
+}
+impl WasiView for Ctx {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+
+    fn ctx(&mut self) -> &mut wasmtime_wasi::WasiCtx {
+        &mut self.wasi
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    // Parse command line arguments
     let args = Args::parse();
     assert_eq!(
         args.argv0, "task",
         "cargo-task should be invoked as a `cargo` subcommand"
     );
 
-    // 2. Find task in tasks directory
+    // Find task in tasks directory
     let dir = findup_workspace(&std::env::current_dir()?)?;
-
     let task_rs = dir.join("tasks").join(format!("{}.rs", args.task_name));
     assert!(&task_rs.exists());
 
+    // Create the output dir for the compiled task
     let target_tasks_dir = dir.join("target/tasks");
     fs::create_dir_all(&target_tasks_dir)?;
 
-    // 3. Find rustc
-    std::process::Command::new("rustc")
+    // Compile the task
+    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", args.task_name));
+
+    let _rustc_status = std::process::Command::new("rustc")
         .arg("+beta")
         .arg("--target")
         .arg("wasm32-wasip2")
         .arg("-Ccodegen-units=1")
         .arg(task_rs)
         .arg("-o")
-        .arg(target_tasks_dir.join(format!("{}.wasm", args.task_name)))
-        .spawn()?;
+        .arg(&task_wasm_path)
+        .status()?;
 
-    // 4. Compile the task
+    // Run the task
 
-    // 5. Run the task
+    // Setup the engine.
+    // These pieces can be reused for multiple component instantiations.
+    let mut config = Config::default();
+    config.wasm_component_model(true);
+    config.async_support(true);
+    let engine = Engine::new(&config)?;
+    let component = Component::from_file(&engine, task_wasm_path)?;
 
-    Ok(())
+    // Setup the linker and add the `wasi:cli/command` world's imports to this
+    // linker.
+    let mut linker: component::Linker<Ctx> = component::Linker::new(&engine);
+    wasmtime_wasi::add_to_linker_async(&mut linker)?;
+    let pre = linker.instantiate_pre(&component)?;
+
+    // Instantiate the component!
+    let host = Ctx {
+        wasi: wasmtime_wasi::WasiCtxBuilder::new()
+            .inherit_stderr()
+            .inherit_stdout()
+            .inherit_network()
+            .build(),
+        table: wasmtime::component::ResourceTable::new(),
+    };
+    let mut store: Store<Ctx> = Store::new(&engine, host);
+
+    // Instantiate the component and we're off to the races.
+    let (command, _instance) = Command::instantiate_pre(&mut store, &pre).await?;
+    let program_result = command.wasi_cli_run().call_run(&mut store).await?;
+    match program_result {
+        Ok(()) => Ok(()),
+        Err(()) => std::process::exit(1),
+    }
 }
 
 /// Recurse upwards in the directory structure until we find a
