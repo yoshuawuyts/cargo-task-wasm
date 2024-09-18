@@ -9,6 +9,10 @@ use wasmtime::{component::Component, Result, *};
 use wasmtime_wasi::bindings::Command;
 use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiView};
 
+mod cargo;
+
+use cargo::CargoToml;
+
 /// A sandboxed task runner for cargo
 #[derive(clap::Parser, Debug)]
 #[command(version, about)]
@@ -47,6 +51,16 @@ impl WasiView for Ctx {
     }
 }
 
+/// A representation of a task on-disk.
+///
+/// Tasks are assumed to either exist in the `tasks/` subdirectory,
+/// or can be defined in `Cargo.toml` as part of the `[tasks]` section.
+#[derive(Debug, PartialEq, Clone)]
+struct TaskDefinition {
+    name: String,
+    path: PathBuf,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Parse command line arguments
@@ -58,24 +72,33 @@ async fn main() -> Result<(), Error> {
 
     // Find task in tasks directory
     let workspace_dir = findup_workspace(&std::env::current_dir()?)?;
-    let task_rs = workspace_dir
-        .join("tasks")
-        .join(format!("{}.rs", args.task_name));
-    assert!(&task_rs.exists());
+
+    let cargo_toml_path = workspace_dir.join("Cargo.toml");
+    let cargo_toml: CargoToml = toml::from_str(&fs::read_to_string(&cargo_toml_path)?)?;
+    dbg!(&cargo_toml);
+
+    let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_dir)?;
+    dbg!(&task_definition);
+
+    // let task_rs = workspace_dir
+    //     .join("tasks")
+    //     .join(format!("{}.rs", args.task_name));
+    // if !task_rs.exists() {
+    //     panic!("could not find {:#?}", task_rs);
+    // }
 
     // Create the output dir for the compiled task
     let target_tasks_dir = workspace_dir.join("target/tasks");
     fs::create_dir_all(&target_tasks_dir)?;
 
     // Compile the task
-    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", args.task_name));
-
+    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", task_definition.name));
     let _rustc_status = std::process::Command::new("rustc")
         .arg("+beta")
         .arg("--target")
         .arg("wasm32-wasip2")
         .arg("-Ccodegen-units=1")
-        .arg(task_rs)
+        .arg(&task_definition.path)
         .arg("-o")
         .arg(&task_wasm_path)
         .status()?;
@@ -135,4 +158,36 @@ fn findup_workspace(entry: &Path) -> io::Result<PathBuf> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "No Cargo.toml found"))?;
 
     findup_workspace(parent)
+}
+
+fn resolve_task(
+    task_name_to_look_up: &str,
+    cargo_toml: &CargoToml,
+    workspace_dir: &Path,
+) -> io::Result<TaskDefinition> {
+    let default_path = || PathBuf::from(format!("tasks/{task_name_to_look_up}.rs"));
+
+    if let Some(task_details) = cargo_toml.tasks.get(task_name_to_look_up) {
+        let task_path = match &task_details.path {
+            Some(task_path) => PathBuf::from(task_path),
+            None => default_path(),
+        };
+        return Ok(TaskDefinition {
+            name: task_name_to_look_up.to_string(),
+            path: task_path,
+        });
+    }
+
+    let task_path = default_path();
+    if workspace_dir.join(&task_path).exists() {
+        return Ok(TaskDefinition {
+            name: task_name_to_look_up.to_string(),
+            path: task_path,
+        });
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        format!("Task `{}` not found", task_name_to_look_up),
+    ))
 }

@@ -4,7 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+wstd = "0.4.0"
+
+# [task-dependencies]
+# wstd = "0.4.0"
 
 # optional! - this can be omitted to just be inferred instead
 [tasks]
 print = { path = "tasks/print.rs" }
+print2 = { path = "tasks/print.rs" }
+# print = { path = "tasks/print.rs", permissions = {...} }
+# list = { permissions = { ... } }
+# my-crates-io-task = "0.5.0"
+# my-crates-io-task2 = { version = "0.5.0", permissions = { ... } }

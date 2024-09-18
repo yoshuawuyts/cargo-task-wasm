@@ -3,9 +3,9 @@
 - [x] sketch out a repository layout or whatever workflow example
 - [x] create a new `cargo` subcommand
 - [x] hook up wasmtime to the subcommand
-- [ ] add support for manual paths in a `[tasks]` section in `Cargo.toml`
+- [x] add support for manual paths in a `[tasks]` section in `Cargo.toml`
 - [ ] figure out how to configure capabilities for the tasks
-- [ ] add support for non-std deps to the subcommands
+- [ ] add support for cargo deps to the subcommands
 - [ ] add Crates.io support (lol)
 
 ## Questions
