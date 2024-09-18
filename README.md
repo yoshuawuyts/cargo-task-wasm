@@ -47,6 +47,16 @@ Components](https://component-model.bytecodealliance.org). This is an attempt at
 formalizing [cargo-xtask](https://github.com/matklad/cargo-xtask) pattern into a
 secure, first-class workflow.
 
+## Roadmap
+
+- [x] Sketch out a repository layout or whatever workflow example
+- [x] Create a new `cargo` subcommand
+- [x] Hook up wasmtime to the subcommand
+- [x] Add support for manual paths in a `[tasks]` section in `Cargo.toml`
+- [x] Figure out how to configure capabilities for the tasks
+- [ ] Add support for compiling cargo deps as part of subcommands
+- [ ] Add support for installing tasks from crates.io
+
 ## Installation
 
 The `cargo task` subcommand compiles Rust to Wasm Components targeting [WASI
@@ -105,16 +115,6 @@ other locations by specifying custom paths.
 [tasks]
 print = { path = "tasks/print.rs" }   # define a custom path for the task
 ```
-
-## Roadmap
-
-- [x] Sketch out a repository layout or whatever workflow example
-- [x] Create a new `cargo` subcommand
-- [x] Hook up wasmtime to the subcommand
-- [x] Add support for manual paths in a `[tasks]` section in `Cargo.toml`
-- [x] Figure out how to configure capabilities for the tasks
-- [ ] Add support for compiling cargo deps as part of subcommands
-- [ ] Add support for installing tasks from crates.io
 
 ## See Also
 
