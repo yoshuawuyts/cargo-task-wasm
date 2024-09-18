@@ -11,6 +11,7 @@ pub struct CargoToml {
 /// When definition of a task is more than just a version string.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields)]
 pub struct TaskDetail {
     /// This path is usually relative to the crate's manifest, but when using workspace inheritance, it may be relative to the workspace!
     ///
@@ -18,4 +19,27 @@ pub struct TaskDetail {
     /// path when inherited from the workspace.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+
+    /// Permissions and capabilities associated with the task.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Permissions>,
+}
+
+/// Permissions and capabilities associated with the task.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields)]
+pub struct Permissions {
+    /// Decide whether to inherit all, none, or a white list of the environment
+    /// variables.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inherit_env: Option<InheritEnv>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[serde(untagged)]
+pub enum InheritEnv {
+    Bool(bool),
+    AllowList(Vec<String>),
 }

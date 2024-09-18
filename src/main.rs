@@ -11,7 +11,7 @@ use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiView};
 
 mod cargo;
 
-use cargo::CargoToml;
+use cargo::{CargoToml, InheritEnv, Permissions};
 
 /// A sandboxed task runner for cargo
 #[derive(clap::Parser, Debug)]
@@ -59,6 +59,7 @@ impl WasiView for Ctx {
 struct TaskDefinition {
     name: String,
     path: PathBuf,
+    env: EnvVars,
 }
 
 #[tokio::main]
@@ -123,13 +124,27 @@ async fn main() -> Result<(), Error> {
     wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
     // Instantiate the component!
+    let mut wasi = wasmtime_wasi::WasiCtxBuilder::new();
+    wasi.inherit_stderr();
+    wasi.inherit_stdout();
+
+    match task_definition.env {
+        EnvVars::None => {}
+        EnvVars::All => {
+            wasi.inherit_env();
+        }
+        EnvVars::AllowList(vars) => {
+            for (key, value) in vars {
+                eprintln!("setting environment variable: {key} = {value}");
+                wasi.env(key, value);
+            }
+        }
+    }
+
+    wasi.args(&args.args);
+    wasi.preopened_dir(&workspace_dir, "/", DirPerms::all(), FilePerms::all())?;
     let host = Ctx {
-        wasi: wasmtime_wasi::WasiCtxBuilder::new()
-            .inherit_stderr()
-            .inherit_stdout()
-            .args(&args.args)
-            .preopened_dir(&workspace_dir, "/", DirPerms::all(), FilePerms::all())?
-            .build(),
+        wasi: wasi.build(),
         table: wasmtime::component::ResourceTable::new(),
     };
     let mut store: Store<Ctx> = Store::new(&engine, host);
@@ -160,6 +175,9 @@ fn findup_workspace(entry: &Path) -> io::Result<PathBuf> {
     findup_workspace(parent)
 }
 
+/// Try and find a task by name on disk. This can either originate from the
+/// `tasks/` subdirectory, or a custom path defined in `Cargo.toml` as part of
+/// `[tasks]`.
 fn resolve_task(
     task_name_to_look_up: &str,
     cargo_toml: &CargoToml,
@@ -175,6 +193,7 @@ fn resolve_task(
         return Ok(TaskDefinition {
             name: task_name_to_look_up.to_string(),
             path: task_path,
+            env: dbg!(build_sandbox_env(&task_details.permissions)),
         });
     }
 
@@ -183,6 +202,7 @@ fn resolve_task(
         return Ok(TaskDefinition {
             name: task_name_to_look_up.to_string(),
             path: task_path,
+            env: EnvVars::None,
         });
     }
 
@@ -190,4 +210,41 @@ fn resolve_task(
         io::ErrorKind::NotFound,
         format!("Task `{}` not found", task_name_to_look_up),
     ))
+}
+
+/// Which environment variables should we map?
+#[derive(Debug, PartialEq, Clone)]
+enum EnvVars {
+    All,
+    None,
+    AllowList(Vec<(String, String)>),
+}
+
+/// Construct the environment variables from the list of permissions.
+fn build_sandbox_env(permissions: &Option<Permissions>) -> EnvVars {
+    let Some(permissions) = &permissions else {
+        eprintln!("build_sandbox_env: permissions are None");
+        return EnvVars::None;
+    };
+
+    let Some(inherit_env) = &permissions.inherit_env else {
+        eprintln!("build_sandbox_env: inherit_env is None");
+        return EnvVars::None;
+    };
+
+    eprintln!("build_sandbox_env: inherit_env = {:?}", inherit_env);
+
+    match inherit_env {
+        InheritEnv::Bool(true) => EnvVars::All,
+        InheritEnv::Bool(false) => EnvVars::None,
+        InheritEnv::AllowList(vars) => {
+            let mut map = Vec::new();
+            for var in vars {
+                if let Ok(value) = std::env::var(&var) {
+                    map.push((var.clone(), value));
+                }
+            }
+            EnvVars::AllowList(map)
+        }
+    }
 }
