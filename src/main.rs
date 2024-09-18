@@ -7,7 +7,7 @@ use std::{fs, io};
 use clap::Parser;
 use wasmtime::{component::Component, Result, *};
 use wasmtime_wasi::bindings::Command;
-use wasmtime_wasi::{ResourceTable, WasiView};
+use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiView};
 
 /// A sandboxed task runner for cargo
 #[derive(clap::Parser, Debug)]
@@ -18,6 +18,8 @@ struct Args {
     argv0: String,
     /// The name of the task to run
     task_name: String,
+    /// Optional arguments to pass to the task
+    args: Vec<String>,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -55,12 +57,14 @@ async fn main() -> Result<(), Error> {
     );
 
     // Find task in tasks directory
-    let dir = findup_workspace(&std::env::current_dir()?)?;
-    let task_rs = dir.join("tasks").join(format!("{}.rs", args.task_name));
+    let workspace_dir = findup_workspace(&std::env::current_dir()?)?;
+    let task_rs = workspace_dir
+        .join("tasks")
+        .join(format!("{}.rs", args.task_name));
     assert!(&task_rs.exists());
 
     // Create the output dir for the compiled task
-    let target_tasks_dir = dir.join("target/tasks");
+    let target_tasks_dir = workspace_dir.join("target/tasks");
     fs::create_dir_all(&target_tasks_dir)?;
 
     // Compile the task
@@ -100,7 +104,8 @@ async fn main() -> Result<(), Error> {
         wasi: wasmtime_wasi::WasiCtxBuilder::new()
             .inherit_stderr()
             .inherit_stdout()
-            .inherit_network()
+            .args(&args.args)
+            .preopened_dir(&workspace_dir, "/", DirPerms::all(), FilePerms::all())?
             .build(),
         table: wasmtime::component::ResourceTable::new(),
     };
