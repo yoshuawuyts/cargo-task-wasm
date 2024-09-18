@@ -118,8 +118,9 @@ print = { path = "tasks/print.rs" }   # define a custom path for the task
 
 ## See Also
 
-- [Custom tasks in Cargo (Aaron Turon, 2016)](http://aturon.github.io/tech/2018/04/05/workflows/)
-- [`matklad/cargo-xtask` (Alex Kladov, 2019)](https://github.com/matklad/cargo-xtask)
+- [Custom tasks in Cargo (Aaron Turon, 2016)](http://aturon.github.io/tech/2018/04/05/workflows/) - First proposed a `cargo task` subcommand for custom tasks.
+- [`matklad/cargo-xtask` (Alex Kladov, 2019)](https://github.com/matklad/cargo-xtask) - A convention-based implementation of `cargo task`.
+- [`dtolnay/watt` (David Tolnay 2019)](https://github.com/dtolnay/watt) - Executing Rust procedural macros compiled as WebAssembly.
 
 ## Safety
 This crate uses ``#![deny(unsafe_code)]`` to ensure everything is implemented in
