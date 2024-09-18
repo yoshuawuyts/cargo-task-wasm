@@ -76,7 +76,11 @@ async fn main() -> Result<(), Error> {
         .arg(&task_wasm_path)
         .status()?;
 
-    // Run the task
+    // Ok, it's time to setup Wasmtime and load our component. This goes through two phases:
+    // 1. Load the program and link it - this is done once and can be reused multiple times
+    //    between various instances. In our program here though we'll just create a single instance.
+    // 2. Create an instance of the program and give it its own memory, etc. This is a working copy
+    //    of the program and we need to give it some of its own state to work with.
 
     // Setup the engine.
     // These pieces can be reused for multiple component instantiations.
