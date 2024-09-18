@@ -19,7 +19,7 @@ authors = [
 [dependencies]
 clap = { version = "4.5.17", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["macros"] }
-wasmtime = "21.0.0"
-wasmtime-wasi = "21.0.0"
+wasmtime = "24.0.0"
+wasmtime-wasi = "24.0.0"
 
 [dev-dependencies]

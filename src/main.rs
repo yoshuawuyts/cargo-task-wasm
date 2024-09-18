@@ -94,7 +94,6 @@ async fn main() -> Result<(), Error> {
     // linker.
     let mut linker: component::Linker<Ctx> = component::Linker::new(&engine);
     wasmtime_wasi::add_to_linker_async(&mut linker)?;
-    let pre = linker.instantiate_pre(&component)?;
 
     // Instantiate the component!
     let host = Ctx {
@@ -108,7 +107,7 @@ async fn main() -> Result<(), Error> {
     let mut store: Store<Ctx> = Store::new(&engine, host);
 
     // Instantiate the component and we're off to the races.
-    let (command, _instance) = Command::instantiate_pre(&mut store, &pre).await?;
+    let command = Command::instantiate_async(&mut store, &component, &linker).await?;
     let program_result = command.wasi_cli_run().call_run(&mut store).await?;
     match program_result {
         Ok(()) => Ok(()),
