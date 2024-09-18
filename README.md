@@ -3,25 +3,22 @@
   <strong>Wa</strong>sm <strong>T</strong>ask <strong>R</strong>unner for Cargo
 </div>
 
-<br />
+<!-- <br />
 
 <div align="center">
-  <!-- Crates version -->
   <a href="https://crates.io/crates/cargo-task">
     <img src="https://img.shields.io/crates/v/cargo-task.svg?style=flat-square"
     alt="Crates.io version" />
   </a>
-  <!-- Downloads -->
   <a href="https://crates.io/crates/cargo-task">
     <img src="https://img.shields.io/crates/d/cargo-task.svg?style=flat-square"
       alt="Download" />
   </a>
-  <!-- docs.rs docs -->
   <a href="https://docs.rs/cargo-task">
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
-</div>
+</div> -->
 
 <div align="center">
   <h3>

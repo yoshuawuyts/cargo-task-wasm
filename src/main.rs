@@ -76,10 +76,8 @@ async fn main() -> Result<(), Error> {
 
     let cargo_toml_path = workspace_dir.join("Cargo.toml");
     let cargo_toml: CargoToml = toml::from_str(&fs::read_to_string(&cargo_toml_path)?)?;
-    dbg!(&cargo_toml);
 
     let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_dir)?;
-    dbg!(&task_definition);
 
     // let task_rs = workspace_dir
     //     .join("tasks")
@@ -185,16 +183,18 @@ fn resolve_task(
 ) -> io::Result<TaskDefinition> {
     let default_path = || PathBuf::from(format!("tasks/{task_name_to_look_up}.rs"));
 
-    if let Some(task_details) = cargo_toml.tasks.get(task_name_to_look_up) {
-        let task_path = match &task_details.path {
-            Some(task_path) => PathBuf::from(task_path),
-            None => default_path(),
-        };
-        return Ok(TaskDefinition {
-            name: task_name_to_look_up.to_string(),
-            path: task_path,
-            env: dbg!(build_sandbox_env(&task_details.permissions)),
-        });
+    if let Some(tasks) = &cargo_toml.tasks {
+        if let Some(task_details) = tasks.get(task_name_to_look_up) {
+            let task_path = match &task_details.path {
+                Some(task_path) => PathBuf::from(task_path),
+                None => default_path(),
+            };
+            return Ok(TaskDefinition {
+                name: task_name_to_look_up.to_string(),
+                path: task_path,
+                env: build_sandbox_env(&task_details.permissions),
+            });
+        }
     }
 
     let task_path = default_path();
@@ -223,16 +223,16 @@ enum EnvVars {
 /// Construct the environment variables from the list of permissions.
 fn build_sandbox_env(permissions: &Option<Permissions>) -> EnvVars {
     let Some(permissions) = &permissions else {
-        eprintln!("build_sandbox_env: permissions are None");
+        // eprintln!("build_sandbox_env: permissions are None");
         return EnvVars::None;
     };
 
     let Some(inherit_env) = &permissions.inherit_env else {
-        eprintln!("build_sandbox_env: inherit_env is None");
+        // eprintln!("build_sandbox_env: inherit_env is None");
         return EnvVars::None;
     };
 
-    eprintln!("build_sandbox_env: inherit_env = {:?}", inherit_env);
+    // eprintln!("build_sandbox_env: inherit_env = {:?}", inherit_env);
 
     match inherit_env {
         InheritEnv::Bool(true) => EnvVars::All,

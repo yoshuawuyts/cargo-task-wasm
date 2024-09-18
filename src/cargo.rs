@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CargoToml {
-    pub tasks: BTreeMap<String, TaskDetail>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tasks: Option<BTreeMap<String, TaskDetail>>,
 }
 
 /// When definition of a task is more than just a version string.
