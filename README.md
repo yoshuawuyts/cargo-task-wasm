@@ -5,7 +5,7 @@
   </strong>
 </div>
 
-<!-- <br />
+ <br />
 
 <div align="center">
   <a href="https://crates.io/crates/cargo-task-wasm">
@@ -20,7 +20,7 @@
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
-</div> -->
+</div>
 
 <div align="center">
   <h3>
