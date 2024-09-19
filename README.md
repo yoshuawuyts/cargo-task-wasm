@@ -102,7 +102,7 @@ edition = "2021"
 wstd = "0.4.0"
 
 [tasks]
-env = { permissions = { inherit-env = ["FOO"] } }   # inherit specific env vars
+env = { inherit-env = ["FOO"] }   # inherit specific env vars
 ```
 
 ### Paths

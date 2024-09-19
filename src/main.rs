@@ -11,7 +11,7 @@ use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiView};
 
 mod cargo;
 
-use cargo::{CargoToml, InheritEnv, Permissions};
+use cargo::{CargoToml, InheritEnv, TaskDetail};
 
 /// A sandboxed task runner for cargo
 #[derive(clap::Parser, Debug)]
@@ -192,7 +192,7 @@ fn resolve_task(
             return Ok(TaskDefinition {
                 name: task_name_to_look_up.to_string(),
                 path: task_path,
-                env: build_sandbox_env(&task_details.permissions),
+                env: build_sandbox_env(task_details),
             });
         }
     }
@@ -220,19 +220,11 @@ enum EnvVars {
     AllowList(Vec<(String, String)>),
 }
 
-/// Construct the environment variables from the list of permissions.
-fn build_sandbox_env(permissions: &Option<Permissions>) -> EnvVars {
-    let Some(permissions) = &permissions else {
-        // eprintln!("build_sandbox_env: permissions are None");
+/// Construct the environment variables from the task details.
+fn build_sandbox_env(task_details: &TaskDetail) -> EnvVars {
+    let Some(inherit_env) = &task_details.inherit_env else {
         return EnvVars::None;
     };
-
-    let Some(inherit_env) = &permissions.inherit_env else {
-        // eprintln!("build_sandbox_env: inherit_env is None");
-        return EnvVars::None;
-    };
-
-    // eprintln!("build_sandbox_env: inherit_env = {:?}", inherit_env);
 
     match inherit_env {
         InheritEnv::Bool(true) => EnvVars::All,

@@ -21,16 +21,6 @@ pub struct TaskDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
 
-    /// Permissions and capabilities associated with the task.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub permissions: Option<Permissions>,
-}
-
-/// Permissions and capabilities associated with the task.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-#[serde(deny_unknown_fields)]
-pub struct Permissions {
     /// Decide whether to inherit all, none, or a white list of the environment
     /// variables.
     #[serde(skip_serializing_if = "Option::is_none")]

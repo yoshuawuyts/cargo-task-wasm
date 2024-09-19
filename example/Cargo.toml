@@ -13,10 +13,9 @@ wstd = "0.4.0"
 [tasks]
 print = { }
 print2 = { path = "tasks/print.rs" }
-env_none = { path = "tasks/env.rs", permissions = { inherit-env = false } }
-env_all = { path = "tasks/env.rs", permissions = { inherit-env = true } }
-env_some = { path = "tasks/env.rs", permissions = { inherit-env = ["MY_ENV_VAR"] } }
+env_none = { path = "tasks/env.rs", inherit-env = false }
+env_all = { path = "tasks/env.rs", inherit-env = true }
+env_some = { path = "tasks/env.rs", inherit-env = ["MY_ENV_VAR"] }
 
 # my-crates-io-task = "0.5.0"
-# my-crates-io-task2 = { version = "0.5.0", permissions = { ... } }
-
+# my-crates-io-task2 = { version = "0.5.0" }
