@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 wstd = "0.4.0"
 
-# [task-dependencies]
-# wstd = "0.4.0"
+[task-dependencies]
+wasi = "0.13.2"
 
 # optional! - this can be omitted to just be inferred instead
 [tasks]

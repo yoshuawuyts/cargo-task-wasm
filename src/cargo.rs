@@ -7,7 +7,14 @@ use std::collections::BTreeMap;
 pub struct CargoToml {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tasks: Option<BTreeMap<String, TaskDetail>>,
+
+    /// Task-specific dependencies, similar to `dev-deps`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_dependencies: Option<BTreeMap<String, VersionNumber>>,
 }
+
+/// A quick alias for a semver number
+type VersionNumber = String;
 
 /// When definition of a task is more than just a version string.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

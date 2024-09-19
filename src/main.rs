@@ -79,28 +79,44 @@ async fn main() -> Result<(), Error> {
 
     let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_dir)?;
 
-    // let task_rs = workspace_dir
-    //     .join("tasks")
-    //     .join(format!("{}.rs", args.task_name));
-    // if !task_rs.exists() {
-    //     panic!("could not find {:#?}", task_rs);
-    // }
-
-    // Create the output dir for the compiled task
-    let target_tasks_dir = workspace_dir.join("target/tasks");
-    fs::create_dir_all(&target_tasks_dir)?;
+    // Create a workspace for the task
+    let workspace_dir = build_task_workspace(
+        &cargo_toml,
+        &workspace_dir.join("target/tasks"),
+        &task_definition,
+    )?;
 
     // Compile the task
-    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", task_definition.name));
-    let _rustc_status = std::process::Command::new("rustc")
+    // TODO: change this to use `cargo` instead!
+    // TODO: tell cargo to use a different target directory inside of our
+    //       target directory, use the manifest-path
+
+    let _cargo_status = std::process::Command::new("cargo")
         .arg("+beta")
+        .arg("build")
         .arg("--target")
         .arg("wasm32-wasip2")
-        .arg("-Ccodegen-units=1")
-        .arg(&task_definition.path)
-        .arg("-o")
-        .arg(&task_wasm_path)
+        .current_dir(&workspace_dir)
+        .arg("--target-dir")
+        .arg(&workspace_dir.join("../target"))
         .status()?;
+
+    if true {
+        // Early exit for now..
+        return Ok(());
+    }
+
+    let target_tasks_dir: &Path = todo!();
+    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", task_definition.name));
+    // let _rustc_status = std::process::Command::new("rustc")
+    //     .arg("+beta")
+    //     .arg("--target")
+    //     .arg("wasm32-wasip2")
+    //     .arg("-Ccodegen-units=1")
+    //     .arg(&task_definition.path)
+    //     .arg("-o")
+    //     .arg(&task_wasm_path)
+    //     .status()?;
 
     // Ok, it's time to setup Wasmtime and load our component. This goes through two phases:
     // 1. Load the program and link it - this is done once and can be reused multiple times
@@ -239,4 +255,82 @@ fn build_sandbox_env(task_details: &TaskDetail) -> EnvVars {
             EnvVars::AllowList(map)
         }
     }
+}
+
+/// Okay, explainer time! Neither Michael nor I (Yosh) know how to instrument Cargo
+/// "correctly", and we didn't want to pull Cargo in as a library (complicated!
+/// unstable!) so we've come up with, *ahem*, a creative solution instead.
+///
+/// The way we're driving `cargo` to build us something that will fetch deps,
+/// etc. is by creating an ephemeral workspace *inside* of the `target/` dir.
+/// Which means: we find the tasks in the task dir, copy them over to the
+/// workspace, and *voila* we can now use `cargo` to make it compile things the
+/// way we hoped they would.
+///
+/// Is this the right way to do things? Absolutely not. But it *is* fairly simple,
+/// and should yield mostly correct results. Again: pulling in cargo as a library
+/// would have been a lot more work - and we built this during a hackathon.
+///
+/// A better version of this project certainly is possible, and if someone is
+/// bold enough to try and integrate it into Cargo proper they should do this
+/// the *proper* way. Until then: we think this is the simplest, most
+/// maintainable way to make the project behave in a way that we don't hate. And
+/// for the constraints we have: that's pretty good!
+fn build_task_workspace(
+    cargo_toml: &CargoToml,
+    root_dir: &Path,
+    // tasks: impl IntoIterator<Item = TaskDefinition>,
+    task: &TaskDefinition,
+) -> Result<PathBuf, Error> {
+    use std::fmt::Write;
+
+    let workspace_dir = root_dir.join("ws");
+    if workspace_dir.exists() {
+        fs::remove_dir_all(&workspace_dir)?;
+    }
+    fs::create_dir_all(&workspace_dir)?;
+    let mut virtual_cargo_toml_contents = String::new();
+
+    writeln!(
+        virtual_cargo_toml_contents,
+        r#"
+    [package]
+    name = "_tasks"
+    version = "0.1.0"
+    edition = "2021"
+    "#
+    )?;
+
+    // Copy the tasks' rs files into the workspace
+    let src_dir = workspace_dir.join("src");
+    fs::create_dir_all(&src_dir)?;
+
+    let task_name = &task.name;
+    std::fs::copy(&task.path, src_dir.join(format!("{task_name}.rs")))?;
+    writeln!(
+        virtual_cargo_toml_contents,
+        r#"
+        [[bin]]
+        name = "{task_name}"
+        path = "src/{task_name}.rs"
+        "#
+    )?;
+
+    if let Some(task_deps) = &cargo_toml.task_dependencies {
+        // Add task dependencies as normal dependencies for this workspace
+        writeln!(virtual_cargo_toml_contents, "[dependencies]")?;
+        for (dep_name, dep_version) in task_deps.iter() {
+            writeln!(
+                virtual_cargo_toml_contents,
+                r#"{dep_name} = "{dep_version}""#
+            )?;
+        }
+    }
+
+    std::fs::write(
+        workspace_dir.join("Cargo.toml"),
+        virtual_cargo_toml_contents,
+    )?;
+
+    Ok(workspace_dir)
 }
