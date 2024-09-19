@@ -1,6 +1,6 @@
 [package]
 name = "cargo-task-wasm"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yoshuawuyts/cargo-task-wasm"
 documentation = "https://docs.rs/cargo-task-wasm"
@@ -13,6 +13,11 @@ authors = [
     "Yoshua Wuyts <rust@yosh.is>",
     "Michael Woerister <michaelwoerister@posteo.de>",
 ]
+autobins = false
+
+[[bin]]
+name = "cargo-task"
+path = "src/main.rs"
 
 [features]
 
