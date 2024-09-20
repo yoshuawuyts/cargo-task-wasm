@@ -86,9 +86,6 @@ async fn main() -> Result<(), Error> {
     )?;
 
     // Compile the task
-    // TODO: change this to use `cargo` instead!
-    // TODO: tell cargo to use a different target directory inside of our
-    //       target directory, use the manifest-path
 
     let tasks_target_dir = target_workspace_dir.join("../target");
 
