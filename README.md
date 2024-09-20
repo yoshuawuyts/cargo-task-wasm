@@ -31,6 +31,24 @@ Components](https://component-model.bytecodealliance.org). This is an attempt at
 formalizing [cargo-xtask](https://github.com/matklad/cargo-xtask) pattern into a
 first-class, secure workflow.
 
+Supply chain attacks like the [2022 `node-ipc`
+vulnerability](https://nvd.nist.gov/vuln/detail/CVE-2022-23812) or the [2018
+`event-stream`
+vulnerability](https://blog.npmjs.org/post/180565383195/details-about-the-event-stream-incident)
+the danger of executing third-party scripts locally without a sandbox.
+`wasmtime` and
+[cargo-component](https://github.com/bytecodealliance/cargo-component) make it
+possible to sandbox both local testing and remote execution of code. But most
+project-local tooling is still unsandboxed. This project makes it possible to
+isolate and sandbox build project-local build tools.
+
+This project is not a complete solution, but a piece of a broader sandboxing
+strategy for Rust. To fully secure local build tooling proc macros also need to
+be sandboxed (e.g. via [`watt`][watt]), as well as `build.rs` scripts (no
+solution exists yet). Our hope is that it will eventually be possible to sandbox
+all of these, making it so an entire class of attack on the Rust ecosystem can
+be prevented. This project brings us one step closer.
+
 ## Roadmap
 
 - [x] Sketch out a repository layout or whatever workflow example
@@ -176,7 +194,7 @@ designed to ensure the sandbox cannot be escaped.
 
 - [Custom tasks in Cargo (Aaron Turon, 2018)](http://aturon.github.io/tech/2018/04/05/workflows/) - First proposed a `cargo task` subcommand for custom tasks.
 - [`matklad/cargo-xtask` (Alex Kladov, 2019)](https://github.com/matklad/cargo-xtask) - A convention-based implementation of `cargo task`.
-- [`dtolnay/watt` (David Tolnay 2019)](https://github.com/dtolnay/watt) - Executing Rust procedural macros compiled as WebAssembly.
+- [`dtolnay/watt` (David Tolnay 2019)][watt] - Executing Rust procedural macros compiled as WebAssembly.
 
 ## Safety
 This crate uses ``#![deny(unsafe_code)]`` to ensure everything is implemented in
@@ -217,3 +235,5 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this crate by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
 </sub>
+
+[watt]: https://github.com/dtolnay/watt
