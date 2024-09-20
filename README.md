@@ -1,7 +1,7 @@
 <h1 align="center">cargo-task-wasm</h1>
 <div align="center">
   <strong>
-    A secure `cargo task` subcommand for Rust
+    A sandboxed local task runner for Rust
   </strong>
 </div>
 
@@ -20,22 +20,6 @@
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
-</div>
-
-<div align="center">
-  <h3>
-    <a href="https://docs.rs/cargo-task-wasm">
-      API Docs
-    </a>
-    <span> | </span>
-    <a href="https://github.com/yoshuawuyts/cargo-task-wasm/releases">
-      Releases
-    </a>
-    <span> | </span>
-    <a href="https://github.com/yoshuawuyts/cargo-task-wasm/blob/master.github/CONTRIBUTING.md">
-      Contributing
-    </a>
-  </h3>
 </div>
 
 ## About
@@ -84,6 +68,9 @@ Arguments:
 Options:
   -h, --help     Print help
   -V, --version  Print version
+
+Examples:
+  cargo task codegen     # run a task called `codegen`
 ```
 
 ## Configuration
@@ -138,7 +125,52 @@ wstd = "0.4.0"
 Tasks are discovered in the local `tasks/` directory of your project. This is a
 treated as standalone workspace where each file is treated as an individual task
 to be compiled and executed. This behaves not unlike the `tests/` directory in
-Cargo projects. It is possible to use both submodules and dependencies 
+Cargo projects. It is possible to use both submodules and dependencies with
+tasks like you would expect. A typical project structure will look like this:
+
+```text
+example/
+├── Cargo.toml
+├── src
+│   └── lib.rs
+└── tasks
+    ├── codegen.rs
+    └── test.rs
+```
+
+This structure will give you access to the `cargo task codegen` and `cargo task
+test` subcommands.
+
+## Limitations
+
+By default tasks only get access to the local project directory and any
+additional arguments passed via the CLI. Additional capabilities such as network
+or filesystem access can be configured via `Cargo.toml`. Sandboxing is provided
+by the Wasmtime runtime, and the available APIs are part of the
+`wasi:cli/command` world. Some limitations however still exist, and are good to
+be aware of:
+
+- **Limited ecosystem support**: At the time of writing WASI 0.2 is a fairly new
+compile target, and so ecoystem support is still in its infancy. Not all crates
+are expected to work, and may need to be updated first.
+- **Limited stdlib support**: For similar reasons: not all functionality in the
+stdlib will work yet. In particular network support for WASI 0.2 is still being
+implemented. This is expected to land in Rust 1.84 in the second half of 2024.
+If you want to access the network before then, you can try and use the
+[wasi](https://docs.rs/wasi) or [wstd](https://docs.rs/wstd) crates.
+- **No threading support**: At the time of writing support for threading in WASI
+0.2 has not yet been implemented. Work on this is still ongoing upstream in the
+WASI subgroup. Consensus on a design seems to have formed, and implementation
+work has started - but this is unlikely to stabilize before the start of 2025.
+- **No support for exec/fork**: WASI 0.2 does not allow you to spawn or fork new
+processes. Providing access to this would be a sandbox escape, and so we don't
+provide access to it. This means it's not possible to shell out to call global
+tools, which may at times be impractical but is also a necessary limitation to
+guarantee security.
+
+In the future we hope to provide a way to instrument Cargo or Rustc directly
+from inside the sandbox. However this will need to be carefully evaluated and
+designed to ensure the sandbox cannot be escaped.
 
 ## See Also
 
@@ -160,6 +192,16 @@ look at some of these issues:
 [contributing]: https://github.com/yoshuawuyts/cargo-task-wasm/blob/master.github/CONTRIBUTING.md
 [good-first-issue]: https://github.com/yoshuawuyts/cargo-task-wasm/labels/good%20first%20issue
 [help-wanted]: https://github.com/yoshuawuyts/cargo-task-wasm/labels/help%20wanted
+
+## Acknowledgements
+
+This project was built as a collaboration between [Michael
+Woerister](https://github.com/michaelwoerister) and [Yosh
+Wuyts](https://github.com/yoshuawuyts) as part of the 2024 Microsoft Hackathon,
+targeting the [Microsoft Secure Future
+Initiative](https://www.microsoft.com/en-us/microsoft-cloud/resources/secure-future-initiative).
+Special thanks to [Pat Hickey](https://github.com/pchickey) for showing us how
+to configure Wasmtime as a Rust library.
 
 ## License
 
