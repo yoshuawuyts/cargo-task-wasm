@@ -45,7 +45,7 @@ project-local tasks inside a secure WebAssembly sandbox. It looks for files in a
 `tasks/` subdirectory of your project's root, and compiles those to [Wasm
 Components](https://component-model.bytecodealliance.org). This is an attempt at
 formalizing [cargo-xtask](https://github.com/matklad/cargo-xtask) pattern into a
-secure, first-class workflow.
+first-class, secure workflow.
 
 ## Roadmap
 
@@ -57,8 +57,8 @@ secure, first-class workflow.
 - [x] Add support for compiling cargo deps as part of subcommands
 - [x] Store config in Cargo metadata section
 - [x] Add support for using submodules
+- [ ] Add the remainder of the capabilities
 - [ ] Add support for installing tasks from crates.io
-- [ ] Add the remainder of the permissions
 - [ ] Support workspaces and [`[workspace.metadata]`](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-metadata-table)
 
 ## Installation
@@ -88,7 +88,7 @@ Options:
 
 ## Configuration
 
-### Permissions
+### Capabilities
 
 Tasks in `cargo task` follow the [principle of least
 privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege). By
@@ -102,9 +102,6 @@ name = "example"
 version = "0.1.0"
 edition = "2021"
 
-[package.metadata.task-dependencies]
-wstd = "0.4.0"
-
 [package.metadata.tasks]
 env-filter = { inherit-env = ["FOO"] }  # inherit specific env vars
 env-all = { inherit-env = true }        # inherit all env vars
@@ -116,6 +113,32 @@ point](https://doc.rust-lang.org/cargo/reference/manifest.html#the-metadata-tabl
 Cargo recommends using for third-party extensions. Should a `cargo tasks`
 command ever become a first-class extension to Cargo, the `package.metadata`
 prefix can be dropped.
+
+### Dependencies
+
+Tasks must specify their own dependencies via
+`[package.metadata.task-dependencies]` in `Cargo.toml`. These dependencies are
+separate from Cargo's existing `[dev-dependencies]` and `[build-dependencies]`
+because these dependencies must be able to be compiled to Rust's `wasm32-wasip2`
+target. Not all dev or build deps may fit these requirements, which is why task
+dependencies are listed separately.
+
+```toml
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.task-dependencies]
+wstd = "0.4.0"
+```
+
+### Paths
+
+Tasks are discovered in the local `tasks/` directory of your project. This is a
+treated as standalone workspace where each file is treated as an individual task
+to be compiled and executed. This behaves not unlike the `tests/` directory in
+Cargo projects. It is possible to use both submodules and dependencies 
 
 ## See Also
 
