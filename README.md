@@ -55,8 +55,10 @@ secure, first-class workflow.
 - [x] Add support for manual paths in a `[tasks]` section in `Cargo.toml`
 - [x] Figure out how to configure capabilities for the tasks
 - [x] Add support for compiling cargo deps as part of subcommands
-- [ ] Store config in Cargo metadata section
+- [x] Store config in Cargo metadata section
 - [ ] Add support for installing tasks from crates.io
+- [ ] Add the remainder of the permissions
+- [ ] Support workspaces and [`[workspace.metadata]`](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-metadata-table)
 
 ## Installation
 
@@ -91,7 +93,7 @@ Tasks in `cargo task` follow the [principle of least
 privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege). By
 default they only get access to the working directory, and can access any
 additional command line arguments passed to it. Additional permissions can be
-configured via a `[tasks]` section in `Cargo.toml`.
+configured via a `[package.metadata.tasks]` section in `Cargo.toml`.
 
 ```toml
 [package]
@@ -99,12 +101,19 @@ name = "example"
 version = "0.1.0"
 edition = "2021"
 
-[task-dependencies]
+[package.metadata.task-dependencies]
 wstd = "0.4.0"
 
-[tasks]
+[package.metadata.tasks]
 env = { inherit-env = ["FOO"] }   # inherit specific env vars
 ```
+
+The reason why this is stored in `[package.metadata.tasks]` rather than a
+top-level `[tasks]` section is because that is [the canonical extension
+point](https://doc.rust-lang.org/cargo/reference/manifest.html#the-metadata-table)
+Cargo recommends using for third-party extensions. Should a `cargo tasks`
+command ever become a first-class extension to Cargo, the `package.metadata`
+prefix can be dropped.
 
 ### Paths
 

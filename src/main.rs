@@ -192,17 +192,19 @@ fn resolve_task(
 ) -> io::Result<TaskDefinition> {
     let default_path = || PathBuf::from(format!("tasks/{task_name_to_look_up}.rs"));
 
-    if let Some(tasks) = &cargo_toml.tasks {
-        if let Some(task_details) = tasks.get(task_name_to_look_up) {
-            let task_path = match &task_details.path {
-                Some(task_path) => PathBuf::from(task_path),
-                None => default_path(),
-            };
-            return Ok(TaskDefinition {
-                name: task_name_to_look_up.to_string(),
-                path: task_path,
-                env: build_sandbox_env(task_details),
-            });
+    if let Some(metadata) = &cargo_toml.package.metadata {
+        if let Some(tasks) = &metadata.tasks {
+            if let Some(task_details) = tasks.get(task_name_to_look_up) {
+                let task_path = match &task_details.path {
+                    Some(task_path) => PathBuf::from(task_path),
+                    None => default_path(),
+                };
+                return Ok(TaskDefinition {
+                    name: task_name_to_look_up.to_string(),
+                    path: task_path,
+                    env: build_sandbox_env(task_details),
+                });
+            }
         }
     }
 
@@ -309,14 +311,16 @@ fn build_task_workspace(
         "#
     )?;
 
-    if let Some(task_deps) = &cargo_toml.task_dependencies {
-        // Add task dependencies as normal dependencies for this workspace
-        writeln!(virtual_cargo_toml_contents, "[dependencies]")?;
-        for (dep_name, dep_version) in task_deps.iter() {
-            writeln!(
-                virtual_cargo_toml_contents,
-                r#"{dep_name} = "{dep_version}""#
-            )?;
+    if let Some(metadata) = &cargo_toml.package.metadata {
+        if let Some(task_deps) = &metadata.task_dependencies {
+            // Add task dependencies as normal dependencies for this workspace
+            writeln!(virtual_cargo_toml_contents, "[dependencies]")?;
+            for (dep_name, dep_version) in task_deps.iter() {
+                writeln!(
+                    virtual_cargo_toml_contents,
+                    r#"{dep_name} = "{dep_version}""#
+                )?;
+            }
         }
     }
 

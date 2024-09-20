@@ -5,6 +5,21 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CargoToml {
+    pub package: Package,
+}
+
+/// The `package` field inside of Cargo.toml
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Package {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
+}
+
+/// The `package.metadata` section inside of Cargo.toml
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tasks: Option<BTreeMap<String, TaskDetail>>,
 

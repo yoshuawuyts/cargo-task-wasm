@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 wstd = "0.4.0"
 
-[task-dependencies]
+[package.metadata.task-dependencies]
 wasi = "0.13.2"
 
 # optional! - this can be omitted to just be inferred instead
-[tasks]
+[package.metadata.tasks]
 print = { }
 print2 = { path = "tasks/print.rs" }
 env_none = { path = "tasks/env.rs", inherit-env = false }
