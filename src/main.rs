@@ -79,15 +79,6 @@ async fn main() -> Result<(), Error> {
     let cargo_toml_path = workspace_root_dir.join("Cargo.toml");
     let cargo_toml: CargoToml = toml::from_str(&fs::read_to_string(&cargo_toml_path)?)?;
 
-    // let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_root_dir)?;
-
-    // Create a workspace for the task
-    // let target_workspace_dir = build_task_workspace(
-    //     &cargo_toml,
-    //     &workspace_root_dir.join("target/tasks"),
-    //     &task_definition,
-    // )?;
-
     let target_workspace_dir = build_task_workspace(
         &cargo_toml,
         &workspace_root_dir.join("target/tasks"),
