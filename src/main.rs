@@ -72,17 +72,17 @@ async fn main() -> Result<(), Error> {
     );
 
     // Find task in tasks directory
-    let workspace_dir = findup_workspace(&std::env::current_dir()?)?;
+    let workspace_root_dir = findup_workspace(&std::env::current_dir()?)?;
 
-    let cargo_toml_path = workspace_dir.join("Cargo.toml");
+    let cargo_toml_path = workspace_root_dir.join("Cargo.toml");
     let cargo_toml: CargoToml = toml::from_str(&fs::read_to_string(&cargo_toml_path)?)?;
 
-    let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_dir)?;
+    let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_root_dir)?;
 
     // Create a workspace for the task
-    let workspace_dir = build_task_workspace(
+    let target_workspace_dir = build_task_workspace(
         &cargo_toml,
-        &workspace_dir.join("target/tasks"),
+        &workspace_root_dir.join("target/tasks"),
         &task_definition,
     )?;
 
@@ -91,32 +91,20 @@ async fn main() -> Result<(), Error> {
     // TODO: tell cargo to use a different target directory inside of our
     //       target directory, use the manifest-path
 
+    let tasks_target_dir = target_workspace_dir.join("../target");
+
     let _cargo_status = std::process::Command::new("cargo")
         .arg("+beta")
         .arg("build")
         .arg("--target")
         .arg("wasm32-wasip2")
-        .current_dir(&workspace_dir)
+        .current_dir(&target_workspace_dir)
         .arg("--target-dir")
-        .arg(&workspace_dir.join("../target"))
+        .arg(&tasks_target_dir)
         .status()?;
 
-    if true {
-        // Early exit for now..
-        return Ok(());
-    }
-
-    let target_tasks_dir: &Path = todo!();
-    let task_wasm_path = target_tasks_dir.join(format!("{}.wasm", task_definition.name));
-    // let _rustc_status = std::process::Command::new("rustc")
-    //     .arg("+beta")
-    //     .arg("--target")
-    //     .arg("wasm32-wasip2")
-    //     .arg("-Ccodegen-units=1")
-    //     .arg(&task_definition.path)
-    //     .arg("-o")
-    //     .arg(&task_wasm_path)
-    //     .status()?;
+    let task_wasm_path =
+        tasks_target_dir.join(format!("wasm32-wasip2/debug/{}.wasm", task_definition.name));
 
     // Ok, it's time to setup Wasmtime and load our component. This goes through two phases:
     // 1. Load the program and link it - this is done once and can be reused multiple times
@@ -156,7 +144,12 @@ async fn main() -> Result<(), Error> {
     }
 
     wasi.args(&args.args);
-    wasi.preopened_dir(&workspace_dir, "/", DirPerms::all(), FilePerms::all())?;
+    wasi.preopened_dir(
+        &target_workspace_dir,
+        "/",
+        DirPerms::all(),
+        FilePerms::all(),
+    )?;
     let host = Ctx {
         wasi: wasi.build(),
         table: wasmtime::component::ResourceTable::new(),

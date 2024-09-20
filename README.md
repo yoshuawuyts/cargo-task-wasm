@@ -54,7 +54,8 @@ secure, first-class workflow.
 - [x] Hook up wasmtime to the subcommand
 - [x] Add support for manual paths in a `[tasks]` section in `Cargo.toml`
 - [x] Figure out how to configure capabilities for the tasks
-- [ ] Add support for compiling cargo deps as part of subcommands
+- [x] Add support for compiling cargo deps as part of subcommands
+- [ ] Store config in Cargo metadata section
 - [ ] Add support for installing tasks from crates.io
 
 ## Installation
