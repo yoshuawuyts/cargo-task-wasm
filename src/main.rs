@@ -1,10 +1,12 @@
 //! A task runner for Cargo
 #![forbid(unsafe_code)]
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use clap::Parser;
+use fs_extra::dir::CopyOptions;
 use wasmtime::{component::Component, Result, *};
 use wasmtime_wasi::bindings::Command;
 use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiView};
@@ -77,13 +79,19 @@ async fn main() -> Result<(), Error> {
     let cargo_toml_path = workspace_root_dir.join("Cargo.toml");
     let cargo_toml: CargoToml = toml::from_str(&fs::read_to_string(&cargo_toml_path)?)?;
 
-    let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_root_dir)?;
+    // let task_definition = resolve_task(&args.task_name, &cargo_toml, &workspace_root_dir)?;
 
     // Create a workspace for the task
+    // let target_workspace_dir = build_task_workspace(
+    //     &cargo_toml,
+    //     &workspace_root_dir.join("target/tasks"),
+    //     &task_definition,
+    // )?;
+
     let target_workspace_dir = build_task_workspace(
         &cargo_toml,
         &workspace_root_dir.join("target/tasks"),
-        &task_definition,
+        &workspace_root_dir.join("tasks"),
     )?;
 
     // Compile the task
@@ -102,6 +110,12 @@ async fn main() -> Result<(), Error> {
         .arg("--target-dir")
         .arg(&tasks_target_dir)
         .status()?;
+
+    let tasks = resolve_tasks(&cargo_toml, &workspace_root_dir.join("tasks"))?;
+    let task_definition = tasks.get(&args.task_name).expect(&format!(
+        "could not find a task with the name {:?}",
+        &args.task_name
+    ));
 
     let task_wasm_path =
         tasks_target_dir.join(format!("wasm32-wasip2/debug/{}.wasm", task_definition.name));
@@ -130,7 +144,7 @@ async fn main() -> Result<(), Error> {
     wasi.inherit_stderr();
     wasi.inherit_stdout();
 
-    match task_definition.env {
+    match &task_definition.env {
         EnvVars::None => {}
         EnvVars::All => {
             wasi.inherit_env();
@@ -182,47 +196,6 @@ fn findup_workspace(entry: &Path) -> io::Result<PathBuf> {
     findup_workspace(parent)
 }
 
-/// Try and find a task by name on disk. This can either originate from the
-/// `tasks/` subdirectory, or a custom path defined in `Cargo.toml` as part of
-/// `[tasks]`.
-fn resolve_task(
-    task_name_to_look_up: &str,
-    cargo_toml: &CargoToml,
-    workspace_dir: &Path,
-) -> io::Result<TaskDefinition> {
-    let default_path = || PathBuf::from(format!("tasks/{task_name_to_look_up}.rs"));
-
-    if let Some(metadata) = &cargo_toml.package.metadata {
-        if let Some(tasks) = &metadata.tasks {
-            if let Some(task_details) = tasks.get(task_name_to_look_up) {
-                let task_path = match &task_details.path {
-                    Some(task_path) => PathBuf::from(task_path),
-                    None => default_path(),
-                };
-                return Ok(TaskDefinition {
-                    name: task_name_to_look_up.to_string(),
-                    path: task_path,
-                    env: build_sandbox_env(task_details),
-                });
-            }
-        }
-    }
-
-    let task_path = default_path();
-    if workspace_dir.join(&task_path).exists() {
-        return Ok(TaskDefinition {
-            name: task_name_to_look_up.to_string(),
-            path: task_path,
-            env: EnvVars::None,
-        });
-    }
-
-    Err(io::Error::new(
-        io::ErrorKind::NotFound,
-        format!("Task `{}` not found", task_name_to_look_up),
-    ))
-}
-
 /// Which environment variables should we map?
 #[derive(Debug, PartialEq, Clone)]
 enum EnvVars {
@@ -252,30 +225,10 @@ fn build_sandbox_env(task_details: &TaskDetail) -> EnvVars {
     }
 }
 
-/// Okay, explainer time! Neither Michael nor I (Yosh) know how to instrument Cargo
-/// "correctly", and we didn't want to pull Cargo in as a library (complicated!
-/// unstable!) so we've come up with, *ahem*, a creative solution instead.
-///
-/// The way we're driving `cargo` to build us something that will fetch deps,
-/// etc. is by creating an ephemeral workspace *inside* of the `target/` dir.
-/// Which means: we find the tasks in the task dir, copy them over to the
-/// workspace, and *voila* we can now use `cargo` to make it compile things the
-/// way we hoped they would.
-///
-/// Is this the right way to do things? Absolutely not. But it *is* fairly simple,
-/// and should yield mostly correct results. Again: pulling in cargo as a library
-/// would have been a lot more work - and we built this during a hackathon.
-///
-/// A better version of this project certainly is possible, and if someone is
-/// bold enough to try and integrate it into Cargo proper they should do this
-/// the *proper* way. Until then: we think this is the simplest, most
-/// maintainable way to make the project behave in a way that we don't hate. And
-/// for the constraints we have: that's pretty good!
 fn build_task_workspace(
     cargo_toml: &CargoToml,
     root_dir: &Path,
-    // tasks: impl IntoIterator<Item = TaskDefinition>,
-    task: &TaskDefinition,
+    input_tasks_dir: &Path,
 ) -> Result<PathBuf, Error> {
     use std::fmt::Write;
 
@@ -300,16 +253,26 @@ fn build_task_workspace(
     let src_dir = workspace_dir.join("src");
     fs::create_dir_all(&src_dir)?;
 
-    let task_name = &task.name;
-    std::fs::copy(&task.path, src_dir.join(format!("{task_name}.rs")))?;
-    writeln!(
-        virtual_cargo_toml_contents,
-        r#"
-        [[bin]]
-        name = "{task_name}"
-        path = "src/{task_name}.rs"
-        "#
+    fs_extra::dir::copy(
+        input_tasks_dir,
+        src_dir,
+        &CopyOptions::new().content_only(true),
     )?;
+
+    let tasks = resolve_tasks(cargo_toml, input_tasks_dir)?;
+
+    for task_definition in tasks.values() {
+        let task_name = &task_definition.name;
+
+        writeln!(
+            virtual_cargo_toml_contents,
+            r#"
+            [[bin]]
+            name = "{task_name}"
+            path = "src/{task_name}.rs"
+            "#
+        )?;
+    }
 
     if let Some(metadata) = &cargo_toml.package.metadata {
         if let Some(task_deps) = &metadata.task_dependencies {
@@ -330,4 +293,57 @@ fn build_task_workspace(
     )?;
 
     Ok(workspace_dir)
+}
+
+/// Try and find a task by name on disk. This can either originate from the
+/// `tasks/` subdirectory, or a custom path defined in `Cargo.toml` as part of
+/// `[tasks]`.
+fn resolve_tasks(
+    cargo_toml: &CargoToml,
+    tasks_dir: &Path,
+) -> io::Result<BTreeMap<String, TaskDefinition>> {
+    let mut tasks = BTreeMap::new();
+
+    let default_path = |task_name: &str| PathBuf::from(format!("tasks/{task_name}.rs"));
+
+    if let Some(metadata) = &cargo_toml.package.metadata {
+        if let Some(toml_tasks) = &metadata.tasks {
+            for (task_name, task_details) in toml_tasks {
+                let task_path = default_path(&task_name[..]);
+                let task_env = build_sandbox_env(task_details);
+
+                tasks.insert(
+                    task_name.to_string(),
+                    TaskDefinition {
+                        name: task_name.to_string(),
+                        path: task_path,
+                        env: task_env,
+                    },
+                );
+            }
+        }
+    }
+
+    for entry in fs::read_dir(tasks_dir)? {
+        if let Ok(entry) = entry {
+            let filename = entry.file_name();
+            let filename = filename.to_string_lossy();
+            if let Some(task_name) = filename.strip_suffix(".rs") {
+                if tasks.contains_key(task_name) {
+                    continue;
+                }
+
+                tasks.insert(
+                    task_name.to_string(),
+                    TaskDefinition {
+                        name: task_name.to_string(),
+                        path: default_path(&task_name[..]),
+                        env: EnvVars::None,
+                    },
+                );
+            }
+        }
+    }
+
+    Ok(tasks)
 }
